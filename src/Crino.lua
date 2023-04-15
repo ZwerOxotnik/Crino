@@ -379,6 +379,7 @@ local __predefined_elements = {
 	["++"] = {type = __crinoTypes.short_operators, value = "++"},
 	["--"] = {type = __crinoTypes.short_operators, value = "--"},
 	["=="] = {type = __crinoTypes.basic_operator, value = "=="},
+	["is"] = {type = __crinoTypes.basic_operator, value = "=="},
 	[">="] = {type = __crinoTypes.basic_operator, value = ">="},
 	["<="] = {type = __crinoTypes.basic_operator, value = "<="},
 	["~="] = {type = __crinoTypes.basic_operator, value = "~="},
