@@ -45,6 +45,50 @@ Crino has more "loose" syntax rules.
 * It's not possible to affect functions via Crino code;
 * Crino doesn't support some multi-actions in 1 line. For instance: you can't use `if` and `else` in the same line.
 
+Short example:
+```lua
+local Crino = require("Crino")
+local environment = Crino.create_environment()
+Crino.compile(environment, [[
+	print("S")
+	num = 0
+	repeat
+		num++
+		print(num)
+	until num >= 3
+	t = {9,8,7}
+	for k, v in pairs(t) do
+		print(k, v)
+	end
+	print()
+	for k, v in t do
+		print(k, v)
+	end
+	print()
+	for k, v in ipairs(t) do
+		print(k, v)
+	end
+	print()
+	if true then
+		num++
+		print(num)
+	else
+		print("WHAT!")
+	end
+	for i=1, 3, -1 do
+		print(i)
+	end
+	while true
+		print("F")
+		break
+	end
+]])
+Crino.activate_environment(environment)
+for _ = 1, 100 do
+	Crino.step()
+end
+```
+
 # Status
 
 * Crino is under development and not fully ready yet;
