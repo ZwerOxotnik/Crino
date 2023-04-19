@@ -53,7 +53,7 @@ Crino.add_predefined_element(crinoRules, name:string, crinoElement)
 Crino.remove_predefined_element(crinoRules, name:string)
 
 
-Localization stuff:
+Localization stuff (will be replaced with 1 function instead):
 Crino.add_spanish_syntax(crinoRules?)
 Crino.add_portuguese_syntax(crinoRules?)
 Crino.add_russian_syntax(crinoRules?)
