@@ -107,6 +107,7 @@ I'll provide examples in [Factorio](https://factorio.com/)/[minetest](https://ww
 * Remove additional instructions before `else` and `elseif`;
 * Fix `i--`;
 * Improve check of numbers;
+* Converter between languages;
 * Merged instructions in some cases.
 
 # Notes
