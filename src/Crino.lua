@@ -492,7 +492,7 @@ Crino.remove_predefined_element = function(rules, name)
 end
 
 
-local __syntaxes = require((...) and ((...):gsub("Crino", "syntaxes")) or "src/syntaxes")
+local __syntaxes = require((...) and ((...):gsub("Crino$", "syntaxes")) or "src/syntaxes")
 Crino.syntaxes = __syntaxes.get_syntaxes(Crino)
 Crino.alternative_language_names = __syntaxes.alternative_language_names
 Crino.default_syntaxes = {
