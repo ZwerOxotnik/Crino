@@ -13,8 +13,9 @@
 
 --- WARNING: Crino isn't fully ready yet.
 --- Please, read README.md first!
+---@class Crino
 local Crino = {
-	VERSION = "0.2.0",
+	VERSION = "0.3.0",
 	store_functions = true, -- it's problematic to store functions in some environments
 	default_rule_group = 0,
 	log = print -- change it if you need to
@@ -26,6 +27,8 @@ local Crino = {
 
 
 --[[
+Crino.add_syntax(rules:crinoRules, name:string)
+Crino.find_alternative_language_name(target_name:string): string?
 Crino.set_default_goto_name(string)
 Crino.create_rule_group(string|integer): crinoRules
 Crino.create_environment(): crinoEnvironment
@@ -51,27 +54,6 @@ Crino.add_global_variable(crinoRules, name:string, data:string)
 Crino.remove_global_variable(crinoRules, name:string, data:string)
 Crino.add_predefined_element(crinoRules, name:string, crinoElement)
 Crino.remove_predefined_element(crinoRules, name:string)
-
-
-Localization stuff (will be replaced with 1 function instead):
-Crino.add_spanish_syntax(crinoRules?)
-Crino.add_portuguese_syntax(crinoRules?)
-Crino.add_russian_syntax(crinoRules?)
-Crino.add_polish_syntax(crinoRules?)
-Crino.add_romanian_syntax(crinoRules?)
-Crino.add_bengali_syntax(crinoRules?)
-Crino.add_esperanto_syntax(crinoRules?)
-Crino.add_french_syntax(crinoRules?)
-Crino.add_german_syntax(crinoRules?)
-Crino.add_korean_syntax(crinoRules?)
-Crino.add_swahili_syntax(crinoRules?)
-Crino.add_hindi_syntax(crinoRules?)
-Crino.add_malaysian_syntax(crinoRules?)
-Crino.add_indonesian_syntax(crinoRules?)
-Crino.add_chinese_simplified_syntax(crinoRules?)
-Crino.add_italian_syntax(crinoRules?)
-Crino.add_dutch_syntax(crinoRules?)
-Crino.add_japanese_syntax(crinoRules?)
 
 
 # Not ready and, probably, will be changed:
@@ -142,6 +124,8 @@ Crino.environment_instructions_reference = {}
 
 ---@type table<string, table>
 Crino.hidden_variables = {}
+---@type table<string, table>
+Crino.global_variables = {}
 
 
 ---@type crinoEnvironment[]
@@ -214,93 +198,17 @@ Crino.custom_funcs.wait = Crino.custom_funcs.pause
 
 
 ---@type table<string, crinoFunction>
-Crino.functions_to_original = {
-	pairs    = {func_name = "pairs"},
-	ipairs   = {func_name = "ipairs"},
-	next     = {func_name = "next"},
-	tostring = {func_name = "tostring"},
-	tonumber = {func_name = "tonumber"},
-	random   = {func_name = "random"},
-	select   = {func_name = "select"},
-	type     = {func_name = "type"},
-	pack     = {func_name = "pack"},
-	unpack   = {func_name = "unpack"}
-}
+Crino.allowed_functions = {}
 for k in pairs(Crino.custom_funcs) do
-	Crino.functions_to_original[k] = {func_name = "CCF." .. k .. "(S,", is_custom_func = true}
-end
-if print then
-	Crino.functions_to_original.print = {func_name = "print"}
+	Crino.allowed_functions[k] = {func_name = "CCF." .. k .. "(S,", is_custom_func = true}
 end
 
---#region if you want to use some stuff as Crino functions
--- if math then
--- 	local functions_to_original = Crino.functions_to_original
--- 	for k in pairs(math) do
--- 		functions_to_original[k] = {func_name = "math." .. k}
--- 	end
--- end
--- if string then
--- 	local functions_to_original = Crino.functions_to_original
--- 	for k in pairs(string) do
--- 		functions_to_original[k] = {func_name = "string." .. k}
--- 	end
--- end
--- if table then
--- 	local functions_to_original = Crino.functions_to_original
--- 	for k in pairs(table) do
--- 		functions_to_original[k] = {func_name = "table." .. k}
--- 	end
--- end
--- if bit or bits then
--- 	local functions_to_original = Crino.functions_to_original
--- 	local prefix = (bit and "bit") or "bits"
--- 	for k in pairs(bit or bits) do
--- 		functions_to_original[k] = {func_name = prefix .. k}
--- 	end
--- end
---#endregion
-
-
----@type table<string, table>
-Crino.global_variables = {}
-if math then
-	Crino.hidden_variables.math = {}
-	for k, v in pairs(math) do
-		Crino.hidden_variables.math[k] = v
-	end
-	Crino.global_variables.math = {name="HV.math"}
-	Crino.hidden_variables.math.randomseed = nil
-end
-if string then
-	Crino.hidden_variables.string = {}
-	for k, v in pairs(string) do
-		Crino.hidden_variables.string[k] = v
-	end
-	Crino.global_variables.string = {name="HV.string"}
-	Crino.hidden_variables.string.dump = nil
-	-- TODO: change rep
-end
-if table then
-	Crino.hidden_variables.table = {}
-	for k, v in pairs(table) do
-		Crino.hidden_variables.table[k] = v
-	end
-	Crino.global_variables.table = {name="HV.table"}
-	Crino.hidden_variables.table.remove = nil
-	Crino.hidden_variables.table.insert = nil
-	Crino.hidden_variables.table.sort   = nil
-end
-if bit then
-	Crino.global_variables.bit = {name="bit"}
-end
-if bits then
-	Crino.global_variables.bits = {name="bits"}
-end
+Crino.predefined_elements = {}
+local __predefined_elements = Crino.predefined_elements
 
 
 ---@class crinoType
-Crino.types = {
+Crino.__types = {
 	number = 1,
 	string = 2,
 	boolean = 3,
@@ -342,94 +250,7 @@ Crino.types = {
 	unidentified = 39,
 	end_of_action = 40, -- Does nothing in Crino actually
 }
-local __crinoTypes = Crino.types
-
-
-local __predefined_elements = {
-	["("]  = {type = __crinoTypes.left_round_bracket, is_bracket = true},
-	[")"]  = {type = __crinoTypes.right_round_bracket, is_bracket = true},
-	["{"]  = {type = __crinoTypes.left_curly_bracket, is_bracket = true},
-	["}"]  = {type = __crinoTypes.right_curly_bracket, is_bracket = true},
-	["["]  = {type = __crinoTypes.left_square_bracket, is_bracket = true},
-	["]"]  = {type = __crinoTypes.right_square_bracket, is_bracket = true},
-	["#"]  = {type = __crinoTypes.length_operator},
-	["="]  = {type = __crinoTypes.assignment},
-	[","]  = {type = __crinoTypes.comma},
-	["、"]  = {type = __crinoTypes.comma},
-	["."]  = {type = __crinoTypes.dot},
-	["。"]  = {type = __crinoTypes.dot},
-	[":"]  = {type = __crinoTypes.colon},
-	[";"]  = {type = __crinoTypes.end_of_action},
-	[".."]  = {type = __crinoTypes.concatenation},
-	["and"] = {type = __crinoTypes.basic_operator, value = " and"},
-	["&&"]  = {type = __crinoTypes.basic_operator, value = " and"},
-	["or"]  = {type = __crinoTypes.basic_operator, value = " or"},
-	["||"]  = {type = __crinoTypes.basic_operator, value = " or"},
-	["not"] = {type = __crinoTypes.basic_operator, value = " not"},
-	["!"]   = {type = __crinoTypes.basic_operator, value = " not"},
-	["&&="] = {type = __crinoTypes.complex_assignment, value = " and"},
-	["||="] = {type = __crinoTypes.complex_assignment, value = " or"},
-	["+="]  = {type = __crinoTypes.complex_assignment, value = "+"},
-	["-="]  = {type = __crinoTypes.complex_assignment, value = "-"},
-	["*="]  = {type = __crinoTypes.complex_assignment, value = "*"},
-	["^="]  = {type = __crinoTypes.complex_assignment, value = "^"},
-	["/="]  = {type = __crinoTypes.complex_assignment, value = "/"},
-	["%="]  = {type = __crinoTypes.complex_assignment, value = "%"},
-	["..="] = {type = __crinoTypes.complex_assignment, value = ".."},
-	["++"] = {type = __crinoTypes.short_operators, value = "++"},
-	["--"] = {type = __crinoTypes.short_operators, value = "--"},
-	["=="] = {type = __crinoTypes.basic_operator, value = "=="},
-	["is"] = {type = __crinoTypes.basic_operator, value = "=="},
-	[">="] = {type = __crinoTypes.basic_operator, value = ">="},
-	["<="] = {type = __crinoTypes.basic_operator, value = "<="},
-	["~="] = {type = __crinoTypes.basic_operator, value = "~="},
-	["!="] = {type = __crinoTypes.basic_operator, value = "~="},
-	[">"]  = {type = __crinoTypes.basic_operator, value = ">"},
-	["<"]  = {type = __crinoTypes.basic_operator, value = "<"},
-	["+"]  = {type = __crinoTypes.basic_operator, value = "+"},
-	["-"]  = {type = __crinoTypes.basic_operator, value = "-"},
-	["/"]  = {type = __crinoTypes.basic_operator, value = "/"},
-	["*"]  = {type = __crinoTypes.basic_operator, value = "*"},
-	["^"]  = {type = __crinoTypes.basic_operator, value = "^"},
-	["%"]  = {type = __crinoTypes.basic_operator, value = "%"},
-	["nil"]   = {type = __crinoTypes["nil"]},
-	["null"]  = {type = __crinoTypes["nil"]},
-	["true"]  = {type = __crinoTypes.boolean, value = "true"},
-	["false"] = {type = __crinoTypes.boolean, value = "false"},
-	["end"]      = {type = __crinoTypes["end"]},
-	["if"]       = {type = __crinoTypes["if"]},
-	["then"]     = {type = __crinoTypes["then"]},
-	["elseif"]   = {type = __crinoTypes["elseif"]},
-	["elsif"]    = {type = __crinoTypes["elseif"]},
-	["elif"]     = {type = __crinoTypes["elseif"]},
-	["else"]     = {type = __crinoTypes["else"]},
-	["for"]      = {type = __crinoTypes["for"]},
-	["loop"]     = {type = __crinoTypes["for"]},
-	["LOOP"]     = {type = __crinoTypes["for"]},
-	["while"]    = {type = __crinoTypes["while"]},
-	["repeat"]   = {type = __crinoTypes["repeat"]},
-	["until"]    = {type = __crinoTypes["until"]},
-	["break"]    = {type = __crinoTypes["break"]},
-	["continue"] = {type = __crinoTypes["continue"]},
-	["do"]       = {type = __crinoTypes["do"]},
-	["in"]       = {type = __crinoTypes["in"]},
-}
-do
-	local _, _, version = string.find(_VERSION, ".+(%d.%d)")
-	if tonumber(version) >= 5.3 then
-		for _, v in ipairs({"//", "&", "|", "~", ">>", "<<"}) do
-			__predefined_elements[v]      = {type = __crinoTypes.basic_operator,     value = v}
-			__predefined_elements[v.."="] = {type = __crinoTypes.complex_assignment, value = v}
-		end
-	end
-end
-for k, v in pairs(Crino.global_variables) do
-	__predefined_elements[k] = {
-		type = __crinoTypes.global_variables,
-		value = v.name,
-		is_unique = v.is_unique
-	}
-end
+local __crinoTypes = Crino.__types
 
 
 ---@type table<string|integer, crinoRules>
@@ -568,7 +389,7 @@ Crino.add_function = function(rules, name, data)
 	if rules then
 		allowed_functions = rules.allowed_functions
 	else
-		allowed_functions = Crino.functions_to_original
+		allowed_functions = Crino.allowed_functions
 	end
 
 	if allowed_functions[name] then
@@ -586,7 +407,7 @@ Crino.remove_function = function(rules, name)
 	if rules then
 		allowed_functions = rules.allowed_functions
 	else
-		allowed_functions = Crino.functions_to_original
+		allowed_functions = Crino.allowed_functions
 	end
 
 	if allowed_functions[name] then
@@ -671,666 +492,86 @@ Crino.remove_predefined_element = function(rules, name)
 end
 
 
---#region Crino.add_*_syntax
+local __syntaxes = require((...) and ((...):gsub("Crino", "syntaxes")) or "src/syntaxes")
+Crino.syntaxes = __syntaxes.get_syntaxes(Crino)
+Crino.alternative_language_names = __syntaxes.alternative_language_names
+Crino.default_syntaxes = {
+	"lua", "lua-extended", "c-like", "additional-support"
+}
 
 
--- Inspiration from https://manual.lenguajelatino.org/es/stable
----@param rules crinoRules?
-function Crino.add_spanish_syntax(rules)
-	local predefined_elements, functions_to_original, custom_funcs, global_variables
-	if rules then
-		predefined_elements   = rules.predefined_elements
-		functions_to_original = rules.allowed_functions
-		custom_funcs     = rules.custom_funcs
-		global_variables = rules.global_variables
-		rules.goto_name = "ira"
-
-	else
-		predefined_elements   = __predefined_elements
-		functions_to_original = Crino.functions_to_original
-		custom_funcs     = Crino.custom_funcs
-		global_variables = Crino.global_variables
+---@param target_name string
+---@return string?
+Crino.find_alternative_language_name = function(target_name)
+	for original_name, names in pairs(Crino.alternative_language_names) do
+		for _, name in ipairs(names) do
+			if name == target_name then
+				return original_name
+			end
+		end
 	end
-
-	functions_to_original.escribir = {func_name = "print"}
-	functions_to_original.alogico  = {func_name = "type"}
-	predefined_elements["y"] = {type = __crinoTypes.basic_operator, value = " and"}
-	predefined_elements["o"] = {type = __crinoTypes.basic_operator, value = " or"}
-	predefined_elements["nulo"]      = {type = __crinoTypes["nil"]}
-	predefined_elements["nada"]      = {type = __crinoTypes["nil"]}
-	predefined_elements["verdadero"] = {type = __crinoTypes.boolean, value = "true"}
-	predefined_elements["falso"]     = {type = __crinoTypes.boolean, value = "false"}
-	predefined_elements["fin"]       = {type = __crinoTypes["end"]}
-	predefined_elements["si"]        = {type = __crinoTypes["if"]}
-	predefined_elements["entonces"]  = {type = __crinoTypes["then"]}
-	predefined_elements["osi"]       = {type = __crinoTypes["elseif"]}
-	predefined_elements["sino"]      = {type = __crinoTypes["else"]}
-	predefined_elements["desde"]     = {type = __crinoTypes["for"]}
-	predefined_elements["para"]      = {type = __crinoTypes["while"]}
-	predefined_elements["repetir"]   = {type = __crinoTypes["repeat"]}
-	predefined_elements["hasta"]     = {type = __crinoTypes["until"]}
-	predefined_elements["romper"]    = {type = __crinoTypes["break"]}
-	predefined_elements["continuar"] = {type = __crinoTypes["continue"]}
-	predefined_elements["hacer"]     = {type = __crinoTypes["do"]}
-	predefined_elements["en"]        = {type = __crinoTypes["in"]}
 end
 
 
--- Translation from https://babylscript.plom.dev/translations.html
----@param rules crinoRules?
-function Crino.add_portuguese_syntax(rules)
-	local predefined_elements, functions_to_original, custom_funcs, global_variables
-	if rules then
-		predefined_elements   = rules.predefined_elements
-		functions_to_original = rules.allowed_functions
-		custom_funcs     = rules.custom_funcs
-		global_variables = rules.global_variables
-		rules.goto_name = "irpara"
-
-	else
-		predefined_elements   = __predefined_elements
-		functions_to_original = Crino.functions_to_original
-		custom_funcs     = Crino.custom_funcs
-		global_variables = Crino.global_variables
+---@param rules crinoRules|Crino
+---@param name string
+Crino.add_syntax = function(rules, name)
+	if name == "default" then
+		for _, _name in ipairs(Crino.default_syntaxes) do
+			Crino.add_syntax(rules, _name)
+		end
+		return
 	end
 
-	functions_to_original.tipode = {func_name = "type"}
-	predefined_elements["e"]  = {type = __crinoTypes.basic_operator, value = " and"}
-	predefined_elements["ou"] = {type = __crinoTypes.basic_operator, value = " or"}
-	predefined_elements["nulo"]       = {type = __crinoTypes["nil"]}
-	predefined_elements["nada"]       = {type = __crinoTypes["nil"]}
-	predefined_elements["verdadeiro"] = {type = __crinoTypes.boolean, value = "true"}
-	predefined_elements["falso"]      = {type = __crinoTypes.boolean, value = "false"}
-	predefined_elements["fim"]        = {type = __crinoTypes["end"]}
-	predefined_elements["se"]         = {type = __crinoTypes["if"]}
-	predefined_elements["senão"]      = {type = __crinoTypes["else"]}
-	predefined_elements["por"]        = {type = __crinoTypes["for"]}
-	predefined_elements["enquanto"]   = {type = __crinoTypes["while"]}
-	predefined_elements["quebra"]     = {type = __crinoTypes["break"]}
-	predefined_elements["continuar"]  = {type = __crinoTypes["continue"]}
-	predefined_elements["fazer"]      = {type = __crinoTypes["do"]}
-	predefined_elements["em"]         = {type = __crinoTypes["in"]}
-end
-
-
----@param rules crinoRules?
-function Crino.add_russian_syntax(rules)
-	local predefined_elements, functions_to_original, custom_funcs, global_variables
-	if rules then
-		predefined_elements   = rules.predefined_elements
-		functions_to_original = rules.allowed_functions
-		custom_funcs     = rules.custom_funcs
-		global_variables = rules.global_variables
-		rules.goto_name = "перейти"
-
-	else
-		predefined_elements   = __predefined_elements
-		functions_to_original = Crino.functions_to_original
-		custom_funcs     = Crino.custom_funcs
-		global_variables = Crino.global_variables
+	-- find syntax
+	local syntax = Crino.syntaxes[name]
+	if syntax == nil then
+		local language_name = Crino.find_alternative_language_name(name)
+		if language_name then
+			syntax = Crino.syntaxes[name]
+		end
+	end
+	if syntax == nil then
+		-- Upper case first symbol
+		name = string.sub(name, 1, 1):upper() .. string.sub(name, 2)
+		syntax = Crino.syntaxes[name]
+	end
+	if syntax == nil then
+		-- Lower case first symbol
+		name = string.sub(name, 1, 1):lower() .. string.sub(name, 2)
+		syntax = Crino.syntaxes[name]
+	end
+	if syntax == nil then
+		-- WIP
+		-- Crino.log()
+		return
 	end
 
-	functions_to_original["тип"]     = {func_name = "type"}
-	functions_to_original["встроку"] = {func_name = "tostring"}
-	functions_to_original["вчисло"]  = {func_name = "tonumber"}
-	functions_to_original["запаковать"]  = {func_name = "pack"}
-	functions_to_original["распаковать"] = {func_name = "unpack"}
-	predefined_elements["и"]   = {type = __crinoTypes.basic_operator, value = " and"}
-	predefined_elements["или"] = {type = __crinoTypes.basic_operator, value = " or"}
-	predefined_elements["ничего"]   = {type = __crinoTypes["nil"]}
-	predefined_elements["ничему"]   = {type = __crinoTypes["nil"]}
-	predefined_elements["пустота"]  = {type = __crinoTypes["nil"]}
-	predefined_elements["пустоте"]  = {type = __crinoTypes["nil"]}
-	predefined_elements["пусто"]    = {type = __crinoTypes["nil"]}
-	predefined_elements["истина"]   = {type = __crinoTypes.boolean, value = "true"}
-	predefined_elements["истине"]   = {type = __crinoTypes.boolean, value = "true"}
-	predefined_elements["ложь"]     = {type = __crinoTypes.boolean, value = "false"}
-	predefined_elements["конец"]    = {type = __crinoTypes["end"]}
-	predefined_elements["все"]      = {type = __crinoTypes["end"]}
-	predefined_elements["если"]     = {type = __crinoTypes["if"]}
-	predefined_elements["то"]       = {type = __crinoTypes["then"]}
-	predefined_elements["тогда"]    = {type = __crinoTypes["then"]}
-	predefined_elements["иначесли"] = {type = __crinoTypes["elseif"]}
-	predefined_elements["иначе"]    = {type = __crinoTypes["else"]}
-	predefined_elements["цикл"]     = {type = __crinoTypes["for"]}
-	predefined_elements["для"]      = {type = __crinoTypes["for"]}
-	predefined_elements["пока"]     = {type = __crinoTypes["while"]}
-	predefined_elements["повтори"]  = {type = __crinoTypes["repeat"]}
-	predefined_elements["повторяй"] = {type = __crinoTypes["repeat"]}
-	predefined_elements["до"]       = {type = __crinoTypes["until"]}
-	predefined_elements["прервать"] = {type = __crinoTypes["break"]}
-	predefined_elements["сделай"]   = {type = __crinoTypes["do"]}
-	predefined_elements["соверши"]  = {type = __crinoTypes["do"]}
-	predefined_elements["в"]        = {type = __crinoTypes["in"]}
-	predefined_elements["продолжи"] = {type = __crinoTypes["continue"]}
-	predefined_elements["продолжить"] = {type = __crinoTypes["continue"]}
-end
-
-
--- Translation from https://babylscript.plom.dev/translations.html
----@param rules crinoRules?
-function Crino.add_polish_syntax(rules)
-	local predefined_elements, functions_to_original, custom_funcs, global_variables
-	if rules then
-		predefined_elements   = rules.predefined_elements
-		functions_to_original = rules.allowed_functions
-		custom_funcs     = rules.custom_funcs
-		global_variables = rules.global_variables
-		rules.goto_name = "idz"
-	else
-		predefined_elements   = __predefined_elements
-		functions_to_original = Crino.functions_to_original
-		custom_funcs     = Crino.custom_funcs
-		global_variables = Crino.global_variables
+	for k, v in pairs(syntax.predefined_elements) do
+		rules.predefined_elements[k] = v
 	end
 
-	predefined_elements["oraz"] = {type = __crinoTypes.basic_operator, value = " and"}
-	predefined_elements["lub"]  = {type = __crinoTypes.basic_operator, value = " or"}
-	functions_to_original["typ"]       = {func_name = "type"}
-	functions_to_original["typdla"]    = {func_name = "type"}
-	functions_to_original["napis"]     = {func_name = "print"}
-	functions_to_original["naŁańcuch"] = {func_name = "tostring"}
-	predefined_elements["prawda"]   = {type = __crinoTypes.boolean, value = "true"}
-	predefined_elements["fałsz"]    = {type = __crinoTypes.boolean, value = "false"}
-	predefined_elements["null"]     = {type = __crinoTypes["nil"]}
-	predefined_elements["w"]        = {type = __crinoTypes["in"]}
-	predefined_elements["jeśli"]    = {type = __crinoTypes["if"]}
-	predefined_elements["inaczej"]  = {type = __crinoTypes["else"]}
-	predefined_elements["dla"]      = {type = __crinoTypes["for"]}
-	predefined_elements["póki"]     = {type = __crinoTypes["while"]}
-	predefined_elements["powtórz"]  = {type = __crinoTypes["do"]}
-	predefined_elements["koniec"]   = {type = __crinoTypes["end"]}
-	predefined_elements["przerwij"] = {type = __crinoTypes["break"]}
-	predefined_elements["dalej"]    = {type = __crinoTypes["continue"]}
-end
-
--- Translation from https://babylscript.plom.dev/translations.html
----@param rules crinoRules?
-function Crino.add_romanian_syntax(rules)
-	local predefined_elements, functions_to_original, custom_funcs, global_variables
-	if rules then
-		predefined_elements   = rules.predefined_elements
-		functions_to_original = rules.allowed_functions
-		custom_funcs     = rules.custom_funcs
-		global_variables = rules.global_variables
-		rules.goto_name = "mergila"
-	else
-		predefined_elements   = __predefined_elements
-		functions_to_original = Crino.functions_to_original
-		custom_funcs     = Crino.custom_funcs
-		global_variables = Crino.global_variables
+	for k, v in pairs(syntax.global_variables) do
+		-- Perhaps, I should copy data
+		rules.predefined_elements[k] = {
+			type = __crinoTypes.global_variables,
+			value = v.name,
+			is_unique = v.is_unique
+		}
+		rules.global_variables[k] = v
 	end
 
-	functions_to_original["tip"] = {func_name = "type"}
-	functions_to_original["cătreȘirCaractere"] = {func_name = "tostring"}
-	predefined_elements["adevărat"] = {type = __crinoTypes.boolean, value = "true"}
-	predefined_elements["fals"]     = {type = __crinoTypes.boolean, value = "false"}
-	predefined_elements["nul"]      = {type = __crinoTypes["nil"]}
-	predefined_elements["în"]       = {type = __crinoTypes["in"]}
-	predefined_elements["dacă"]     = {type = __crinoTypes["if"]}
-	predefined_elements["altfel"]   = {type = __crinoTypes["else"]}
-	predefined_elements["pentru"]   = {type = __crinoTypes["for"]}
-	predefined_elements["câttimp"]  = {type = __crinoTypes["while"]}
-	predefined_elements["execută"]  = {type = __crinoTypes["do"]}
-	predefined_elements["ieșire"]   = {type = __crinoTypes["break"]}
-	predefined_elements["continuă"] = {type = __crinoTypes["continue"]}
-end
-
-
--- Translation from https://babylscript.plom.dev/translations.html
----@param rules crinoRules?
-function Crino.add_bengali_syntax(rules)
-	local predefined_elements, functions_to_original, custom_funcs, global_variables
-	if rules then
-		predefined_elements   = rules.predefined_elements
-		functions_to_original = rules.allowed_functions
-		custom_funcs     = rules.custom_funcs
-		global_variables = rules.global_variables
-		rules.goto_name = "যাও_তাতে"
-	else
-		predefined_elements   = __predefined_elements
-		functions_to_original = Crino.functions_to_original
-		custom_funcs     = Crino.custom_funcs
-		global_variables = Crino.global_variables
+	for k, v in pairs(syntax.custom_funcs) do
+		rules.custom_funcs[k] = v
 	end
 
-	functions_to_original["এই_ধরনের"] = {func_name = "type"}
-	functions_to_original["পংক্তিতে"]  = {func_name = "tostring"}
-	predefined_elements["সত্য"]   = {type = __crinoTypes.boolean, value = "true"}
-	predefined_elements["অসত্য"] = {type = __crinoTypes.boolean, value = "false"}
-	predefined_elements["নাল"]   = {type = __crinoTypes["nil"]}
-	predefined_elements["মধ্যে"]   = {type = __crinoTypes["in"]}
-	predefined_elements["যদ্যপি"]  = {type = __crinoTypes["if"]}
-	predefined_elements["নয়ত"]   = {type = __crinoTypes["else"]}
-	predefined_elements["জন্যে"]   = {type = __crinoTypes["for"]}
-	predefined_elements["যেহেতু"]  = {type = __crinoTypes["while"]}
-	predefined_elements["করো"]  = {type = __crinoTypes["do"]}
-	predefined_elements["ভাঙ্গন"]  = {type = __crinoTypes["break"]}
-	predefined_elements["অগ্রসর"] = {type = __crinoTypes["continue"]}
-end
-
-
--- Translation from https://babylscript.plom.dev/translations.html
----@param rules crinoRules?
-function Crino.add_esperanto_syntax(rules)
-	local predefined_elements, functions_to_original, custom_funcs, global_variables
-	if rules then
-		predefined_elements   = rules.predefined_elements
-		functions_to_original = rules.allowed_functions
-		custom_funcs     = rules.custom_funcs
-		global_variables = rules.global_variables
-		rules.goto_name = "alŝalte"
-	else
-		predefined_elements   = __predefined_elements
-		functions_to_original = Crino.functions_to_original
-		custom_funcs     = Crino.custom_funcs
-		global_variables = Crino.global_variables
+	for k, v in pairs(syntax.allowed_functions) do
+		rules.allowed_functions[k] = v
 	end
 
-	functions_to_original["tipkongruas"] = {func_name = "type"}
-	functions_to_original["ĉenigu"]      = {func_name = "tostring"}
-	predefined_elements["kaj"] = {type = __crinoTypes.basic_operator, value = " and"}
-	predefined_elements["aŭ"]  = {type = __crinoTypes.basic_operator, value = " or"}
-	predefined_elements["vera"]  = {type = __crinoTypes.boolean, value = "true"}
-	predefined_elements["falsa"] = {type = __crinoTypes.boolean, value = "false"}
-	predefined_elements["nulo"]  = {type = __crinoTypes["nil"]}
-	predefined_elements["en"]    = {type = __crinoTypes["in"]}
-	predefined_elements["se"]    = {type = __crinoTypes["if"]}
-	predefined_elements["alie"]  = {type = __crinoTypes["else"]}
-	predefined_elements["por"]   = {type = __crinoTypes["for"]}
-	predefined_elements["dum"]   = {type = __crinoTypes["while"]}
-	predefined_elements["fare"]  = {type = __crinoTypes["do"]}
-	predefined_elements["eksterŝalte"] = {type = __crinoTypes["break"]}
-	predefined_elements["sekvŝalte"]   = {type = __crinoTypes["continue"]}
+	rules.goto_name = syntax.goto_name or rules.goto_name
 end
-
-
--- Translation from https://babylscript.plom.dev/translations.html
----@param rules crinoRules?
-function Crino.add_french_syntax(rules)
-	local predefined_elements, functions_to_original, custom_funcs, global_variables
-	if rules then
-		predefined_elements   = rules.predefined_elements
-		functions_to_original = rules.allowed_functions
-		custom_funcs     = rules.custom_funcs
-		global_variables = rules.global_variables
-		rules.goto_name = "allerà"
-	else
-		predefined_elements   = __predefined_elements
-		functions_to_original = Crino.functions_to_original
-		custom_funcs     = Crino.custom_funcs
-		global_variables = Crino.global_variables
-	end
-
-	custom_funcs["terminer"] = Crino.custom_funcs.stop
-	predefined_elements["et"] = {type = __crinoTypes.basic_operator, value = " and"}
-	predefined_elements["ou"] = {type = __crinoTypes.basic_operator, value = " or"}
-	functions_to_original["typede"]   = {func_name = "type"}
-	functions_to_original["enChaîne"] = {func_name = "tostring"}
-	predefined_elements["vrai"]  = {type = __crinoTypes.boolean, value = "true"}
-	predefined_elements["faux"]  = {type = __crinoTypes.boolean, value = "false"}
-	predefined_elements["nul"]   = {type = __crinoTypes["nil"]}
-	predefined_elements["dans"]  = {type = __crinoTypes["in"]}
-	predefined_elements["si"]    = {type = __crinoTypes["if"]}
-	predefined_elements["sinon"] = {type = __crinoTypes["else"]}
-	predefined_elements["pour"]  = {type = __crinoTypes["for"]}
-	predefined_elements["faire"] = {type = __crinoTypes["do"]}
-	predefined_elements["répéter"] = {type = __crinoTypes["repeat"]}
-	predefined_elements["Jusqu’à"] = {type = __crinoTypes["until"]}
-	predefined_elements["casser"]    = {type = __crinoTypes["break"]}
-	predefined_elements["tantque"]   = {type = __crinoTypes["while"]}
-	predefined_elements["continuer"] = {type = __crinoTypes["continue"]}
-end
-
-
----@param rules crinoRules?
-function Crino.add_german_syntax(rules)
-	local predefined_elements, functions_to_original, custom_funcs, global_variables
-	if rules then
-		predefined_elements   = rules.predefined_elements
-		functions_to_original = rules.allowed_functions
-		custom_funcs     = rules.custom_funcs
-		global_variables = rules.global_variables
-		rules.goto_name = "springen"
-	else
-		predefined_elements   = __predefined_elements
-		functions_to_original = Crino.functions_to_original
-		custom_funcs     = Crino.custom_funcs
-		global_variables = Crino.global_variables
-	end
-
-	-- Translation from https://babylscript.plom.dev/translations.html
-	functions_to_original["artvon"]         = {func_name = "type"}
-	functions_to_original["zuZeichenkette"] = {func_name = "tostring"}
-	predefined_elements["und"]    = {type = __crinoTypes.basic_operator, value = " and"}
-	predefined_elements["oder"]   = {type = __crinoTypes.basic_operator, value = " or"}
-	predefined_elements["null"]   = {type = __crinoTypes["nil"]}
-	predefined_elements["wahr"]   = {type = __crinoTypes.boolean, value = "true"}
-	predefined_elements["falsch"] = {type = __crinoTypes.boolean, value = "false"}
-	predefined_elements["wenn"]   = {type = __crinoTypes["if"]}
-	predefined_elements["sonst"]  = {type = __crinoTypes["else"]}
-	predefined_elements["für"]    = {type = __crinoTypes["for"]}
-	predefined_elements["in"]     = {type = __crinoTypes["in"]}
-	predefined_elements["ausführen"]  = {type = __crinoTypes["do"]}
-	predefined_elements["solange"]    = {type = __crinoTypes["while"]}
-	predefined_elements["abbrechen"]  = {type = __crinoTypes["break"]}
-	predefined_elements["fortfahren"] = {type = __crinoTypes["continue"]}
-
-	-- Contributed by hubert/Stefan#5336 in Discord
-	predefined_elements["dann"] = {type = __crinoTypes["then"]}
-	predefined_elements["bis"]  = {type = __crinoTypes["until"]}
-	predefined_elements["wiederholen"] = {type = __crinoTypes["repeat"]}
-	predefined_elements["fortfahren"]  = {type = __crinoTypes["continue"]}
-	predefined_elements["blockende"]   = {type = __crinoTypes["end"]}
-	predefined_elements["sonst_wenn"]  = {type = __crinoTypes["elseif"]}
-end
-
-
--- Translation from https://babylscript.plom.dev/translations.html
----@param rules crinoRules?
-function Crino.add_korean_syntax(rules)
-	local predefined_elements, functions_to_original, custom_funcs, global_variables
-	if rules then
-		predefined_elements   = rules.predefined_elements
-		functions_to_original = rules.allowed_functions
-		custom_funcs     = rules.custom_funcs
-		global_variables = rules.global_variables
-		rules.goto_name = "이행"
-	else
-		predefined_elements   = __predefined_elements
-		functions_to_original = Crino.functions_to_original
-		custom_funcs     = Crino.custom_funcs
-		global_variables = Crino.global_variables
-	end
-
-	functions_to_original["문자열화"] = {func_name = "tostring"}
-	functions_to_original["의형"]    = {func_name = "type"}
-	predefined_elements["그리고"]  = {type = __crinoTypes.basic_operator, value = " and"}
-	predefined_elements["또는"]   = {type = __crinoTypes.basic_operator, value = " or"}
-	predefined_elements["참"]     = {type = __crinoTypes.boolean, value = "true"}
-	predefined_elements["거짓"]   = {type = __crinoTypes.boolean, value = "false"}
-	predefined_elements["널"]     = {type = __crinoTypes["nil"]}
-	predefined_elements["만약"]   = {type = __crinoTypes["if"]}
-	predefined_elements["아니면"] = {type = __crinoTypes["else"]}
-	predefined_elements["반복"]   = {type = __crinoTypes["for"]}
-	predefined_elements["동안"]   = {type = __crinoTypes["while"]}
-	predefined_elements["정지"]   = {type = __crinoTypes["break"]}
-	predefined_elements["실행"]   = {type = __crinoTypes["do"]}
-	predefined_elements["가운데"] = {type = __crinoTypes["in"]}
-	predefined_elements["계속"]   = {type = __crinoTypes["continue"]}
-end
-
-
--- Translation from https://babylscript.plom.dev/translations.html
----@param rules crinoRules?
-function Crino.add_swahili_syntax(rules)
-	local predefined_elements, functions_to_original, custom_funcs, global_variables
-	if rules then
-		predefined_elements   = rules.predefined_elements
-		functions_to_original = rules.allowed_functions
-		custom_funcs     = rules.custom_funcs
-		global_variables = rules.global_variables
-		rules.goto_name = "nenda"
-	else
-		predefined_elements   = __predefined_elements
-		functions_to_original = Crino.functions_to_original
-		custom_funcs     = Crino.custom_funcs
-		global_variables = Crino.global_variables
-	end
-
-	functions_to_original["ainaya"]     = {func_name = "type"}
-	functions_to_original["kuwaMtungo"] = {func_name = "tostring"}
-	predefined_elements["batili"]  = {type = __crinoTypes["nil"]}
-	predefined_elements["kweli"]   = {type = __crinoTypes.boolean, value = "true"}
-	predefined_elements["sikweli"] = {type = __crinoTypes.boolean, value = "false"}
-	predefined_elements["ikiwa"]   = {type = __crinoTypes["if"]}
-	predefined_elements["lasivyo"] = {type = __crinoTypes["else"]}
-	predefined_elements["kwa"]     = {type = __crinoTypes["for"]}
-	predefined_elements["wakati"]  = {type = __crinoTypes["while"]}
-	predefined_elements["vunja"]   = {type = __crinoTypes["break"]}
-	predefined_elements["tenda"]   = {type = __crinoTypes["do"]}
-	predefined_elements["ndaniYa"] = {type = __crinoTypes["in"]}
-	predefined_elements["endelea"] = {type = __crinoTypes["continue"]}
-end
-
-
--- Translation from https://babylscript.plom.dev/translations.html
----@param rules crinoRules?
-function Crino.add_hindi_syntax(rules)
-	local predefined_elements, functions_to_original, custom_funcs, global_variables
-	if rules then
-		predefined_elements   = rules.predefined_elements
-		functions_to_original = rules.allowed_functions
-		custom_funcs     = rules.custom_funcs
-		global_variables = rules.global_variables
-		rules.goto_name = "जाओ"
-	else
-		predefined_elements   = __predefined_elements
-		functions_to_original = Crino.functions_to_original
-		custom_funcs     = Crino.custom_funcs
-		global_variables = Crino.global_variables
-	end
-
-	functions_to_original["का_प्रकार"] = {func_name = "type"}
-	functions_to_original["वर्णमाला_में"] = {func_name = "tostring"}
-	predefined_elements["रिक्त"]   = {type = __crinoTypes["nil"]}
-	predefined_elements["सही"]    = {type = __crinoTypes.boolean, value = "true"}
-	predefined_elements["ग़लत"]   = {type = __crinoTypes.boolean, value = "false"}
-	predefined_elements["अगर"]   = {type = __crinoTypes["if"]}
-	predefined_elements["अन्यथा"]  = {type = __crinoTypes["else"]}
-	predefined_elements["के_लिए"]  = {type = __crinoTypes["for"]}
-	predefined_elements["जब_तक"] = {type = __crinoTypes["while"]}
-	predefined_elements["अवरोध"]  = {type = __crinoTypes["break"]}
-	predefined_elements["कर"]    = {type = __crinoTypes["do"]}
-	predefined_elements["में"]     = {type = __crinoTypes["in"]}
-	predefined_elements["जारी"]   = {type = __crinoTypes["continue"]}
-end
-
-
--- Translation from https://babylscript.plom.dev/translations.html
----@param rules crinoRules?
-function Crino.add_malaysian_syntax(rules)
-	local predefined_elements, functions_to_original, custom_funcs, global_variables
-	if rules then
-		predefined_elements   = rules.predefined_elements
-		functions_to_original = rules.allowed_functions
-		custom_funcs     = rules.custom_funcs
-		global_variables = rules.global_variables
-		rules.goto_name = "menuju"
-	else
-		predefined_elements   = __predefined_elements
-		functions_to_original = Crino.functions_to_original
-		custom_funcs     = Crino.custom_funcs
-		global_variables = Crino.global_variables
-	end
-
-	functions_to_original["tipedari"]     = {func_name = "type"}
-	functions_to_original["keSerentetan"] = {func_name = "tostring"}
-	predefined_elements["kosong"]  = {type = __crinoTypes["nil"]}
-	predefined_elements["benar"]   = {type = __crinoTypes.boolean, value = "true"}
-	predefined_elements["salah"]   = {type = __crinoTypes.boolean, value = "false"}
-	predefined_elements["jika"]    = {type = __crinoTypes["if"]}
-	predefined_elements["lainnya"] = {type = __crinoTypes["else"]}
-	predefined_elements["untuk"]   = {type = __crinoTypes["for"]}
-	predefined_elements["selagi"]  = {type = __crinoTypes["while"]}
-	predefined_elements["putus"]   = {type = __crinoTypes["break"]}
-	predefined_elements["lakukan"] = {type = __crinoTypes["do"]}
-	predefined_elements["pada"]    = {type = __crinoTypes["in"]}
-	predefined_elements["lanjut"]  = {type = __crinoTypes["continue"]}
-end
-
-
--- Translation from https://babylscript.plom.dev/translations.html
----@param rules crinoRules?
-function Crino.add_indonesian_syntax(rules)
-	local predefined_elements, functions_to_original, custom_funcs, global_variables
-	if rules then
-		predefined_elements   = rules.predefined_elements
-		functions_to_original = rules.allowed_functions
-		custom_funcs     = rules.custom_funcs
-		global_variables = rules.global_variables
-		rules.goto_name = "menuju"
-	else
-		predefined_elements   = __predefined_elements
-		functions_to_original = Crino.functions_to_original
-		custom_funcs     = Crino.custom_funcs
-		global_variables = Crino.global_variables
-	end
-
-	functions_to_original["tipedari"]     = {func_name = "type"}
-	functions_to_original["keSerentetan"] = {func_name = "tostring"}
-	predefined_elements["atau"]    = {type = __crinoTypes.basic_operator, value = " or"}
-	predefined_elements["kosong"]  = {type = __crinoTypes["nil"]}
-	predefined_elements["benar"]   = {type = __crinoTypes.boolean, value = "true"}
-	predefined_elements["salah"]   = {type = __crinoTypes.boolean, value = "false"}
-	predefined_elements["jika"]    = {type = __crinoTypes["if"]}
-	predefined_elements["lainnya"] = {type = __crinoTypes["else"]}
-	predefined_elements["untuk"]   = {type = __crinoTypes["for"]}
-	predefined_elements["selagi"]  = {type = __crinoTypes["while"]}
-	predefined_elements["putus"]   = {type = __crinoTypes["break"]}
-	predefined_elements["lakukan"] = {type = __crinoTypes["do"]}
-	predefined_elements["pada"]    = {type = __crinoTypes["in"]}
-	predefined_elements["lanjut"]  = {type = __crinoTypes["continue"]}
-end
-
-
--- Translation from https://babylscript.plom.dev/translations.html
----@param rules crinoRules?
-function Crino.add_chinese_simplified_syntax(rules)
-	local predefined_elements, functions_to_original, custom_funcs, global_variables
-	if rules then
-		predefined_elements   = rules.predefined_elements
-		functions_to_original = rules.allowed_functions
-		custom_funcs     = rules.custom_funcs
-		global_variables = rules.global_variables
-		rules.goto_name = "跳转到"
-	else
-		predefined_elements   = __predefined_elements
-		functions_to_original = Crino.functions_to_original
-		custom_funcs     = Crino.custom_funcs
-		global_variables = Crino.global_variables
-	end
-
-	functions_to_original["类型为"]  = {func_name = "type"}
-	functions_to_original["转字符串"] = {func_name = "tostring"}
-	predefined_elements["并且"] = {type = __crinoTypes.basic_operator, value = " and"}
-	predefined_elements["或者"] = {type = __crinoTypes.basic_operator, value = " or"}
-	predefined_elements["空"]   = {type = __crinoTypes["nil"]}
-	predefined_elements["真"]   = {type = __crinoTypes.boolean, value = "true"}
-	predefined_elements["假"]   = {type = __crinoTypes.boolean, value = "false"}
-	predefined_elements["如果"] = {type = __crinoTypes["if"]}
-	predefined_elements["否则"] = {type = __crinoTypes["else"]}
-	predefined_elements["取"]   = {type = __crinoTypes["for"]}
-	predefined_elements["当"]   = {type = __crinoTypes["while"]}
-	predefined_elements["跳出"] = {type = __crinoTypes["break"]}
-	predefined_elements["做"]   = {type = __crinoTypes["do"]}
-	predefined_elements["在"]   = {type = __crinoTypes["in"]}
-	predefined_elements["继续"] = {type = __crinoTypes["continue"]}
-end
-
-
--- Translation from https://babylscript.plom.dev/translations.html
----@param rules crinoRules?
-function Crino.add_italian_syntax(rules)
-	local predefined_elements, functions_to_original, custom_funcs, global_variables
-	if rules then
-		predefined_elements   = rules.predefined_elements
-		functions_to_original = rules.allowed_functions
-		custom_funcs     = rules.custom_funcs
-		global_variables = rules.global_variables
-		rules.goto_name = "vaia"
-	else
-		predefined_elements   = __predefined_elements
-		functions_to_original = Crino.functions_to_original
-		custom_funcs     = Crino.custom_funcs
-		global_variables = Crino.global_variables
-	end
-
-	functions_to_original["instringa" ] = {func_name = "tostring"}
-	functions_to_original["tipodi"]     = {func_name = "type"}
-	predefined_elements["nullo"]    = {type = __crinoTypes["nil"]}
-	predefined_elements["vero"]     = {type = __crinoTypes.boolean, value = "true"}
-	predefined_elements["falso"]    = {type = __crinoTypes.boolean, value = "false"}
-	predefined_elements["se"]       = {type = __crinoTypes["if"]}
-	predefined_elements["oppure"]   = {type = __crinoTypes["else"]}
-	predefined_elements["per"]      = {type = __crinoTypes["for"]}
-	predefined_elements["mentre"]   = {type = __crinoTypes["while"]}
-	predefined_elements["eseguire"] = {type = __crinoTypes["do"]}
-	predefined_elements["in"]       = {type = __crinoTypes["in"]}
-	predefined_elements["continuare"]   = {type = __crinoTypes["continue"]}
-	predefined_elements["interrompere"] = {type = __crinoTypes["break"]}
-end
-
-
--- Translation from https://babylscript.plom.dev/translations.html
----@param rules crinoRules?
-function Crino.add_dutch_syntax(rules)
-	local predefined_elements, functions_to_original, custom_funcs, global_variables
-	if rules then
-		predefined_elements   = rules.predefined_elements
-		functions_to_original = rules.allowed_functions
-		custom_funcs     = rules.custom_funcs
-		global_variables = rules.global_variables
-		rules.goto_name = "ganaar"
-	else
-		predefined_elements   = __predefined_elements
-		functions_to_original = Crino.functions_to_original
-		custom_funcs     = Crino.custom_funcs
-		global_variables = Crino.global_variables
-	end
-
-	functions_to_original["typevan"]        = {func_name = "type"}
-	functions_to_original["naarTekenreeks"] = {func_name = "tostring"}
-	predefined_elements["en"] = {type = __crinoTypes.basic_operator, value = " and"}
-	predefined_elements["of"] = {type = __crinoTypes.basic_operator, value = " or"}
-	predefined_elements["nul"]    = {type = __crinoTypes["nil"]}
-	predefined_elements["waar"]   = {type = __crinoTypes.boolean, value = "true"}
-	predefined_elements["onwaar"] = {type = __crinoTypes.boolean, value = "false"}
-	predefined_elements["als"]    = {type = __crinoTypes["if"]}
-	predefined_elements["anders"] = {type = __crinoTypes["else"]}
-	predefined_elements["voor"]   = {type = __crinoTypes["for"]}
-	predefined_elements["zolang"] = {type = __crinoTypes["while"]}
-	predefined_elements["doe"]    = {type = __crinoTypes["do"]}
-	predefined_elements["eind"]   = {type = __crinoTypes["end"]}
-	predefined_elements["herhaal"]    = {type = __crinoTypes["continue"]}
-	predefined_elements["onderbreek"] = {type = __crinoTypes["break"]}
-end
-
-
--- Translation from https://babylscript.plom.dev/translations.html
----@param rules crinoRules?
-function Crino.add_japanese_syntax(rules)
-	local predefined_elements, functions_to_original, custom_funcs, global_variables
-	if rules then
-		predefined_elements   = rules.predefined_elements
-		functions_to_original = rules.allowed_functions
-		custom_funcs     = rules.custom_funcs
-		global_variables = rules.global_variables
-		rules.goto_name = "行け"
-	else
-		predefined_elements   = __predefined_elements
-		functions_to_original = Crino.functions_to_original
-		custom_funcs     = Crino.custom_funcs
-		global_variables = Crino.global_variables
-	end
-
-	functions_to_original["属性"]    = {func_name = "type"}
-	functions_to_original["文字例化"] = {func_name = "tostring"}
-	predefined_elements["ヌル"]   = {type = __crinoTypes["nil"]}
-	predefined_elements["真"]     = {type = __crinoTypes.boolean, value = "true"}
-	predefined_elements["偽"]     = {type = __crinoTypes.boolean, value = "false"}
-	predefined_elements["もし"]   = {type = __crinoTypes["if"]}
-	predefined_elements["なら"]   = {type = __crinoTypes["for"]}
-	predefined_elements["ながら"] = {type = __crinoTypes["while"]}
-	predefined_elements["中断"]   = {type = __crinoTypes["break"]}
-	predefined_elements["する"]   = {type = __crinoTypes["do"]}
-	predefined_elements["が"]     = {type = __crinoTypes["in"]}
-	predefined_elements["続け"]   = {type = __crinoTypes["continue"]}
-	predefined_elements["それ以外"] = {type = __crinoTypes["else"]}
-end
-
-
---#endregion
+Crino.add_syntax(Crino, "default")
 
 
 ---@return crinoEnvironment
@@ -1571,7 +812,7 @@ local function __check_word(rules, word)
 		}
 	end
 
-	local func_data2 = Crino.functions_to_original[word]
+	local func_data2 = Crino.allowed_functions[word]
 	if func_data2 then
 		return {
 			type = __crinoTypes["function"],
